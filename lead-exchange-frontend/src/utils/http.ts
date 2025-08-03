@@ -7,8 +7,9 @@ import type {
   InternalAxiosRequestConfig,
 } from 'axios'
 import { ElMessage } from 'element-plus'
-import router from '@/router'
 import { envConfig } from './env'
+import { getAccessToken } from './authUtils'
+import { processError } from './errorHandler'
 
 // 定义API响应数据类型
 interface ApiResponse<T = any> {
@@ -35,13 +36,17 @@ const http: AxiosInstance = axios.create({
 
 // 请求拦截器
 http.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // 从localStorage获取token
-    const token = localStorage.getItem('access_token')
-
-    // 如果token存在，添加到请求头
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
+  async (config: InternalAxiosRequestConfig) => {
+    // 从安全存储获取token
+    try {
+      const token = await getAccessToken()
+      
+      // 如果token存在，添加到请求头
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    } catch (error) {
+      console.error('获取token失败:', error)
     }
 
     // 添加请求时间戳，防止缓存
@@ -52,12 +57,11 @@ http.interceptors.request.use(
       }
     }
 
-    console.log('发送请求:', config)
     return config
   },
   (error: AxiosError) => {
-    console.error('请求拦截器错误:', error)
-    ElMessage.error('请求配置错误')
+    // 使用统一错误处理
+    processError(error, { customMessage: '请求配置错误' })
     return Promise.reject(error)
   },
 )
@@ -65,8 +69,6 @@ http.interceptors.request.use(
 // 响应拦截器
 http.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('收到响应:', response)
-
     // 统一处理响应数据格式
     const { data } = response
 
@@ -81,72 +83,28 @@ http.interceptors.response.use(
       // 假设后端返回格式为 { code: number, message: string, data: any }
       if (apiResponse.code === 200 || apiResponse.code === 0) {
         return apiResponse.data || apiResponse
-      } else if (apiResponse.code === 401) {
-        // token过期或无效
-        ElMessage.error('登录已过期，请重新登录')
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        router.push('/login')
-        return Promise.reject(new Error('登录已过期'))
       } else {
-        // 其他业务错误
-        ElMessage.error(apiResponse.message || '请求失败')
+        // 业务错误，使用统一错误处理
+        const businessError = {
+          type: apiResponse.code === 401 ? 'AUTH_ERROR' : 'BUSINESS_ERROR',
+          code: apiResponse.code,
+          message: apiResponse.message || '请求失败',
+          level: 'error',
+          timestamp: Date.now(),
+          url: response.config?.url,
+          method: response.config?.method?.toUpperCase()
+        } as any
+        
+        processError(businessError)
         return Promise.reject(new Error(apiResponse.message || '请求失败'))
       }
     }
 
     return data
   },
-  (error: AxiosError) => {
-    console.error('响应拦截器错误:', error)
-
-    // 网络错误处理
-    if (!error.response) {
-      ElMessage.error('网络连接失败，请检查网络设置')
-      return Promise.reject(error)
-    }
-
-    const { status, data } = error.response
-
-    // 根据HTTP状态码处理错误
-    switch (status) {
-      case 400:
-        ElMessage.error('请求参数错误')
-        break
-      case 401:
-        ElMessage.error('未授权，请重新登录')
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        router.push('/login')
-        break
-      case 403:
-        ElMessage.error('拒绝访问，权限不足')
-        break
-      case 404:
-        ElMessage.error('请求的资源不存在')
-        break
-      case 408:
-        ElMessage.error('请求超时')
-        break
-      case 500:
-        ElMessage.error('服务器内部错误')
-        break
-      case 502:
-        ElMessage.error('网关错误')
-        break
-      case 503:
-        ElMessage.error('服务不可用')
-        break
-      case 504:
-        ElMessage.error('网关超时')
-        break
-      default:
-        // 类型安全的错误消息处理
-        const errorData = data as ErrorResponse
-        const errorMessage = errorData?.message || errorData?.error || `请求失败 (${status})`
-        ElMessage.error(errorMessage)
-    }
-
+  async (error: AxiosError) => {
+    // 使用统一错误处理
+    await processError(error)
     return Promise.reject(error)
   },
 )

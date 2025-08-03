@@ -19,7 +19,7 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%">
+          <el-button type="primary" @click="handleLogin" :loading="isLoading" style="width: 100%">
             登录
           </el-button>
         </el-form-item>
@@ -38,15 +38,16 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { useAuth } from '@/composables/useAuth'
 
 // 路由实例
 const router = useRouter()
 
+// 认证相关
+const { login, isLoading } = useAuth()
+
 // 表单引用
 const loginFormRef = ref<FormInstance>()
-
-// 加载状态
-const loading = ref(false)
 
 // 登录表单数据
 const loginForm = reactive({
@@ -72,18 +73,19 @@ const handleLogin = async () => {
 
   try {
     await loginFormRef.value.validate()
-    loading.value = true
-
-    // TODO: 调用登录API
-    // 模拟登录成功
-    setTimeout(() => {
-      loading.value = false
+    
+    // 调用登录API
+    const success = await login(loginForm)
+    
+    if (success) {
       ElMessage.success('登录成功')
       router.push('/')
-    }, 1000)
+    } else {
+      ElMessage.error('登录失败，请检查手机号和密码')
+    }
   } catch (error) {
     console.error('登录失败:', error)
-    loading.value = false
+    ElMessage.error('登录过程中发生错误')
   }
 }
 </script>

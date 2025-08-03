@@ -2,8 +2,8 @@ import http, { get, post, put, del } from '@/utils/http'
 
 // 用户相关API
 export const userApi = {
-  // 用户登录
-  login: (data: { username: string; password: string }) => {
+  // 用户登录 - 使用手机号登录
+  login: (data: { phone: string; password: string }) => {
     return post('/auth/login', data)
   },
 

@@ -4,13 +4,16 @@
 import { computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import type { User, LoginForm, RegisterForm } from '@/types'
+import { secureStorage } from '@/utils/secureStorage'
+import { tokenValidator, type TokenValidationResult } from '@/utils/tokenValidator'
+// import { userApi } from '@/api' // 待实际API接口完成后启用
 
 /**
  * 认证状态管理
  */
 const authState = reactive({
   user: null as User | null,
-  token: localStorage.getItem('token') || '',
+  token: '',
   isLoading: false,
   isAuthenticated: false,
 })
@@ -19,7 +22,13 @@ const authState = reactive({
  * 用户认证组合式API
  */
 export function useAuth() {
-  const router = useRouter()
+  // 安全获取router实例，避免在非Vue组件上下文中调用时出错
+  let router: any = null
+  try {
+    router = useRouter()
+  } catch (error) {
+    console.warn('无法获取router实例，可能在非Vue组件上下文中调用useAuth')
+  }
 
   // ==================== 计算属性 ====================
 
@@ -66,7 +75,10 @@ export function useAuth() {
       authState.isLoading = true
 
       // TODO: 调用登录API
-      // const response = await authApi.login(loginForm);
+      // const response = await userApi.login({
+      //   phone: loginForm.phone,
+      //   password: loginForm.password
+      // });
 
       // 模拟API调用
       await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -75,9 +87,9 @@ export function useAuth() {
       const mockToken = 'mock-jwt-token'
       const mockUser: User = {
         id: 1,
-        username: loginForm.username,
+        username: loginForm.phone, // 统一使用手机号作为用户名，保持与登录表单一致
         email: 'user@example.com',
-        phone: '13800138000',
+        phone: loginForm.phone,
         status: 'ACTIVE' as any,
         roles: [],
         createTime: new Date().toISOString(),
@@ -89,9 +101,9 @@ export function useAuth() {
       authState.user = mockUser
       authState.isAuthenticated = true
 
-      // 保存到本地存储
-      localStorage.setItem('token', mockToken)
-      localStorage.setItem('user', JSON.stringify(mockUser))
+      // 安全保存到本地存储
+      await secureStorage.setItem('access_token', mockToken)
+      await secureStorage.setItem('user', mockUser)
 
       return true
     } catch (error) {
@@ -139,11 +151,18 @@ export function useAuth() {
       authState.isAuthenticated = false
 
       // 清除本地存储
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      secureStorage.removeItem('access_token')
+      secureStorage.removeItem('user')
 
-      // 跳转到登录页
-      router.push('/login')
+      // 跳转到登录页（检查router是否可用）
+      if (router && typeof router.push === 'function') {
+        router.push('/auth/login')
+      } else {
+        // 如果router不可用，使用window.location进行跳转
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login'
+        }
+      }
     } catch (error) {
       console.error('登出失败:', error)
     }
@@ -199,24 +218,134 @@ export function useAuth() {
   }
 
   /**
+   * 验证当前token的有效性
+   */
+  const validateCurrentToken = async (): Promise<TokenValidationResult> => {
+    try {
+      const token = await secureStorage.getItem<string>('access_token')
+      
+      if (!token) {
+        return {
+          isValid: false,
+          error: 'Token不存在'
+        }
+      }
+
+      return tokenValidator.validateToken(token)
+    } catch (error) {
+      console.error('Token验证失败:', error)
+      return {
+        isValid: false,
+        error: 'Token验证异常'
+      }
+    }
+  }
+
+  /**
+   * 检查认证状态（包含完整的安全验证）
+   */
+  const checkAuthStatus = async (): Promise<boolean> => {
+    try {
+      const validation = await validateCurrentToken()
+      
+      if (!validation.isValid) {
+        console.warn('认证状态检查失败:', validation.error)
+        await logout()
+        return false
+      }
+
+      // 检查是否需要刷新token
+      const token = await secureStorage.getItem<string>('access_token')
+      if (token && tokenValidator.shouldRefreshToken(token)) {
+        console.info('Token即将过期，尝试刷新...')
+        // TODO: 实现token刷新逻辑
+        // await refreshToken()
+      }
+
+      return true
+    } catch (error) {
+      console.error('认证状态检查异常:', error)
+      await logout()
+      return false
+    }
+  }
+
+  /**
+   * 检查用户是否有访问指定路由的权限
+   * @param requiredRoles 路由需要的角色
+   * @param requiredPermissions 路由需要的权限
+   */
+  const checkRoutePermission = async (requiredRoles?: string[], requiredPermissions?: string[]): Promise<boolean> => {
+    try {
+      const token = await secureStorage.getItem<string>('access_token')
+      
+      if (!token) {
+        return false
+      }
+
+      // 验证token有效性
+      const validation = tokenValidator.validateToken(token)
+      if (!validation.isValid) {
+        return false
+      }
+
+      // 如果没有指定角色和权限要求，只需要登录即可
+      if (!requiredRoles?.length && !requiredPermissions?.length) {
+        return true
+      }
+
+      // 检查角色权限
+      if (requiredRoles?.length) {
+        const hasRole = tokenValidator.hasRequiredRoles(token, requiredRoles)
+        if (!hasRole) {
+          console.warn('用户缺少必要角色:', requiredRoles)
+          return false
+        }
+      }
+
+      // 检查功能权限
+      if (requiredPermissions?.length) {
+        const hasPermission = tokenValidator.hasRequiredPermissions(token, requiredPermissions)
+        if (!hasPermission) {
+          console.warn('用户缺少必要权限:', requiredPermissions)
+          return false
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error('路由权限检查失败:', error)
+      return false
+    }
+  }
+
+  /**
    * 初始化认证状态
    */
-  const initAuth = (): void => {
-    const token = localStorage.getItem('token')
-    const userStr = localStorage.getItem('user')
+  const initAuth = async (): Promise<void> => {
+    try {
+      const token = await secureStorage.getItem<string>('access_token')
+      const user = await secureStorage.getItem<User>('user')
 
-    if (token && userStr) {
-      try {
-        authState.token = token
-        authState.user = JSON.parse(userStr)
-        authState.isAuthenticated = true
+      if (token && user) {
+        // 验证token有效性
+        const validation = tokenValidator.validateToken(token)
+        
+        if (validation.isValid) {
+          authState.token = token
+          authState.user = user
+          authState.isAuthenticated = true
 
-        // 刷新用户信息
-        refreshUser()
-      } catch (error) {
-        console.error('初始化认证状态失败:', error)
-        logout()
+          // 刷新用户信息
+          await refreshUser()
+        } else {
+          console.warn('存储的token无效:', validation.error)
+          await logout()
+        }
       }
+    } catch (error) {
+      console.error('初始化认证状态失败:', error)
+      await logout()
     }
   }
 
@@ -226,6 +355,7 @@ export function useAuth() {
     // 状态
     isLoggedIn,
     currentUser,
+    user: currentUser, // 添加user别名，保持向后兼容
     userRoles,
     userPermissions,
     isLoading: computed(() => authState.isLoading),
@@ -240,5 +370,10 @@ export function useAuth() {
     hasAnyRole,
     hasAnyPermission,
     initAuth,
+    
+    // 安全验证方法
+    validateCurrentToken,
+    checkAuthStatus,
+    checkRoutePermission,
   }
 }

@@ -17,6 +17,8 @@ import router from './router'
 
 // 引入环境变量工具
 import { logEnvironmentInfo, envConfig } from './utils/env'
+// 引入认证组合式API
+import { useAuth } from './composables/useAuth'
 
 // 打印环境信息（仅在开发环境）
 logEnvironmentInfo()
@@ -49,7 +51,16 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-app.mount('#app')
+// 初始化认证状态
+const { initAuth } = useAuth()
+initAuth().then(() => {
+  // 认证状态初始化完成后挂载应用
+  app.mount('#app')
+}).catch((error) => {
+  console.error('认证初始化失败:', error)
+  // 即使认证初始化失败也要挂载应用
+  app.mount('#app')
+})
 
 // 在开发环境下暴露一些调试信息到全局
 if (envConfig.app.debug) {
