@@ -1,0 +1,141 @@
+// 浅色主题配置文件
+// 定义浅色主题下的颜色变量
+
+// ==================== 主色调 ====================
+$theme-primary: #409eff;
+$theme-primary-light-1: #53a8ff;
+$theme-primary-light-2: #66b1ff;
+$theme-primary-light-3: #79bbff;
+$theme-primary-light-4: #8cc5ff;
+$theme-primary-light-5: #a0cfff;
+$theme-primary-light-6: #b3d8ff;
+$theme-primary-light-7: #c6e2ff;
+$theme-primary-light-8: #d9ecff;
+$theme-primary-light-9: #ecf5ff;
+$theme-primary-dark-1: #337ecc;
+$theme-primary-dark-2: #2d70b3;
+
+// ==================== 功能色 ====================
+$theme-success: #67c23a;
+$theme-success-light: #85ce61;
+$theme-success-lighter: #b3e19d;
+$theme-success-extra-light: #f0f9eb;
+
+$theme-warning: #e6a23c;
+$theme-warning-light: #ebb563;
+$theme-warning-lighter: #f5dab1;
+$theme-warning-extra-light: #fdf6ec;
+
+$theme-danger: #f56c6c;
+$theme-danger-light: #f78989;
+$theme-danger-lighter: #fab6b6;
+$theme-danger-extra-light: #fef0f0;
+
+$theme-info: #909399;
+$theme-info-light: #a6a9ad;
+$theme-info-lighter: #c8c9cc;
+$theme-info-extra-light: #f4f4f5;
+
+// ==================== 文本颜色 ====================
+$theme-text-primary: #303133;
+$theme-text-regular: #606266;
+$theme-text-secondary: #909399;
+$theme-text-placeholder: #a8abb2;
+$theme-text-disabled: #c0c4cc;
+
+// ==================== 边框颜色 ====================
+$theme-border-base: #dcdfe6;
+$theme-border-light: #e4e7ed;
+$theme-border-lighter: #ebeef5;
+$theme-border-extra-light: #f2f6fc;
+
+// ==================== 填充颜色 ====================
+$theme-fill-base: #f0f2f5;
+$theme-fill-light: #f5f7fa;
+$theme-fill-lighter: #fafafa;
+$theme-fill-extra-light: #fafcff;
+$theme-fill-blank: #ffffff;
+
+// ==================== 背景颜色 ====================
+$theme-bg-color: #ffffff;
+$theme-bg-color-page: #f2f3f5;
+$theme-bg-color-overlay: #ffffff;
+
+// ==================== 遮罩颜色 ====================
+$theme-mask-color: rgba(0, 0, 0, 0.8);
+$theme-mask-color-extra-light: rgba(0, 0, 0, 0.3);
+
+// ==================== 阴影 ====================
+$theme-box-shadow-base:
+  0px 12px 32px 4px rgba(0, 0, 0, 0.04),
+  0px 8px 20px rgba(0, 0, 0, 0.08);
+$theme-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, 0.12);
+$theme-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, 0.12);
+$theme-box-shadow-dark:
+  0px 16px 48px 16px rgba(0, 0, 0, 0.08),
+  0px 12px 32px rgba(0, 0, 0, 0.12),
+  0px 8px 16px -8px rgba(0, 0, 0, 0.16);
+
+// ==================== 禁用状态 ====================
+$theme-disabled-bg-color: $theme-fill-light;
+$theme-disabled-text-color: $theme-text-placeholder;
+$theme-disabled-border-color: $theme-border-light;
+
+// ==================== CSS变量定义 ====================
+// 用于支持动态主题切换
+:root {
+  // 主色调
+  --el-color-primary: #{$theme-primary};
+  --el-color-primary-light-1: #{$theme-primary-light-1};
+  --el-color-primary-light-2: #{$theme-primary-light-2};
+  --el-color-primary-light-3: #{$theme-primary-light-3};
+  --el-color-primary-light-4: #{$theme-primary-light-4};
+  --el-color-primary-light-5: #{$theme-primary-light-5};
+  --el-color-primary-light-6: #{$theme-primary-light-6};
+  --el-color-primary-light-7: #{$theme-primary-light-7};
+  --el-color-primary-light-8: #{$theme-primary-light-8};
+  --el-color-primary-light-9: #{$theme-primary-light-9};
+  --el-color-primary-dark-1: #{$theme-primary-dark-1};
+  --el-color-primary-dark-2: #{$theme-primary-dark-2};
+
+  // 功能色
+  --el-color-success: #{$theme-success};
+  --el-color-warning: #{$theme-warning};
+  --el-color-danger: #{$theme-danger};
+  --el-color-info: #{$theme-info};
+
+  // 文本颜色
+  --el-text-color-primary: #{$theme-text-primary};
+  --el-text-color-regular: #{$theme-text-regular};
+  --el-text-color-secondary: #{$theme-text-secondary};
+  --el-text-color-placeholder: #{$theme-text-placeholder};
+  --el-text-color-disabled: #{$theme-text-disabled};
+
+  // 边框颜色
+  --el-border-color: #{$theme-border-base};
+  --el-border-color-light: #{$theme-border-light};
+  --el-border-color-lighter: #{$theme-border-lighter};
+  --el-border-color-extra-light: #{$theme-border-extra-light};
+
+  // 填充颜色
+  --el-fill-color: #{$theme-fill-base};
+  --el-fill-color-light: #{$theme-fill-light};
+  --el-fill-color-lighter: #{$theme-fill-lighter};
+  --el-fill-color-extra-light: #{$theme-fill-extra-light};
+  --el-fill-color-blank: #{$theme-fill-blank};
+
+  // 背景颜色
+  --el-bg-color: #{$theme-bg-color};
+  --el-bg-color-page: #{$theme-bg-color-page};
+  --el-bg-color-overlay: #{$theme-bg-color-overlay};
+
+  // 遮罩颜色
+  --el-mask-color: #{$theme-mask-color};
+  --el-mask-color-extra-light: #{$theme-mask-color-extra-light};
+
+  // 阴影
+  --el-box-shadow: #{$theme-box-shadow-base};
+  --el-box-shadow-light: #{$theme-box-shadow-light};
+  --el-box-shadow-lighter: #{$theme-box-shadow-lighter};
+  --el-box-shadow-dark: #{$theme-box-shadow-dark};
+}
