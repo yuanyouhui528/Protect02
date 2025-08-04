@@ -2,7 +2,10 @@ package com.leadexchange.modules.auth.controller;
 
 import com.leadexchange.common.result.Result;
 import com.leadexchange.common.security.JwtTokenProvider;
-import lombok.extern.slf4j.Slf4j;
+import lombok.Builder;
+import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,11 +30,12 @@ import java.util.Map;
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @Validated
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -78,7 +83,7 @@ public class AuthController {
                 .build();
             
             log.info("用户登录成功，用户名: {}", loginRequest.getUsername());
-            return ResponseEntity.ok(Result.success(response, "登录成功"));
+            return ResponseEntity.ok(Result.success("登录成功", response));
             
         } catch (AuthenticationException ex) {
             log.warn("用户登录失败，用户名: {}, 原因: {}", loginRequest.getUsername(), ex.getMessage());
@@ -118,7 +123,7 @@ public class AuthController {
                 .build();
             
             log.info("用户注册成功，用户名: {}", registerRequest.getUsername());
-            return ResponseEntity.ok(Result.success(response, "注册成功"));
+            return ResponseEntity.ok(Result.success("注册成功", response));
             
         } catch (Exception ex) {
             log.error("用户注册异常，用户名: {}, 错误: {}", registerRequest.getUsername(), ex.getMessage());
@@ -165,7 +170,7 @@ public class AuthController {
                 .build();
             
             log.info("令牌刷新成功，用户名: {}", username);
-            return ResponseEntity.ok(Result.success(response, "令牌刷新成功"));
+            return ResponseEntity.ok(Result.success("令牌刷新成功", response));
             
         } catch (Exception ex) {
             log.error("令牌刷新异常，错误: {}", ex.getMessage());
@@ -208,10 +213,10 @@ public class AuthController {
             UserInfo userInfo = UserInfo.builder()
                 .username("current-user")
                 .email("user@example.com")
-                .roles(java.util.List.of("USER"))
+                .roles(List.of("USER"))
                 .build();
             
-            return ResponseEntity.ok(Result.success(userInfo, "获取用户信息成功"));
+            return ResponseEntity.ok(Result.success("获取用户信息成功", userInfo));
             
         } catch (Exception ex) {
             log.error("获取用户信息异常，错误: {}", ex.getMessage());
@@ -224,7 +229,6 @@ public class AuthController {
     /**
      * 登录请求DTO
      */
-    @lombok.Data
     public static class LoginRequest {
         @NotBlank(message = "用户名不能为空")
         private String username;
@@ -233,25 +237,135 @@ public class AuthController {
         private String password;
         
         private Boolean rememberMe = false;
+        
+        // Getter和Setter方法
+        public String getUsername() {
+            return username;
+        }
+        
+        public void setUsername(String username) {
+            this.username = username;
+        }
+        
+        public String getPassword() {
+            return password;
+        }
+        
+        public void setPassword(String password) {
+            this.password = password;
+        }
+        
+        public Boolean getRememberMe() {
+            return rememberMe;
+        }
+        
+        public void setRememberMe(Boolean rememberMe) {
+            this.rememberMe = rememberMe;
+        }
     }
 
     /**
      * 登录响应DTO
      */
-    @lombok.Data
-    @lombok.Builder
     public static class LoginResponse {
         private String accessToken;
         private String refreshToken;
         private String tokenType;
         private Long expiresIn;
         private String username;
+        
+        public static LoginResponseBuilder builder() {
+            return new LoginResponseBuilder();
+        }
+        
+        public static class LoginResponseBuilder {
+            private String accessToken;
+            private String refreshToken;
+            private String tokenType;
+            private Long expiresIn;
+            private String username;
+            
+            public LoginResponseBuilder accessToken(String accessToken) {
+                this.accessToken = accessToken;
+                return this;
+            }
+            
+            public LoginResponseBuilder refreshToken(String refreshToken) {
+                this.refreshToken = refreshToken;
+                return this;
+            }
+            
+            public LoginResponseBuilder tokenType(String tokenType) {
+                this.tokenType = tokenType;
+                return this;
+            }
+            
+            public LoginResponseBuilder expiresIn(Long expiresIn) {
+                this.expiresIn = expiresIn;
+                return this;
+            }
+            
+            public LoginResponseBuilder username(String username) {
+                this.username = username;
+                return this;
+            }
+            
+            public LoginResponse build() {
+                LoginResponse response = new LoginResponse();
+                response.accessToken = this.accessToken;
+                response.refreshToken = this.refreshToken;
+                response.tokenType = this.tokenType;
+                response.expiresIn = this.expiresIn;
+                response.username = this.username;
+                return response;
+            }
+        }
+        
+        // Getter和Setter方法
+        public String getAccessToken() {
+            return accessToken;
+        }
+        
+        public void setAccessToken(String accessToken) {
+            this.accessToken = accessToken;
+        }
+        
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+        
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
+        
+        public String getTokenType() {
+            return tokenType;
+        }
+        
+        public void setTokenType(String tokenType) {
+            this.tokenType = tokenType;
+        }
+        
+        public Long getExpiresIn() {
+            return expiresIn;
+        }
+        
+        public void setExpiresIn(Long expiresIn) {
+            this.expiresIn = expiresIn;
+        }
+        
+        public String getUsername() {
+            return username;
+        }
+        
+        public void setUsername(String username) {
+            this.username = username;
+        }
     }
 
     /**
      * 注册请求DTO
      */
-    @lombok.Data
     public static class RegisterRequest {
         @NotBlank(message = "用户名不能为空")
         private String username;
@@ -263,55 +377,272 @@ public class AuthController {
         private String email;
         
         private String phone;
+        
+        // Getter和Setter方法
+        public String getUsername() {
+            return username;
+        }
+        
+        public void setUsername(String username) {
+            this.username = username;
+        }
+        
+        public String getPassword() {
+            return password;
+        }
+        
+        public void setPassword(String password) {
+            this.password = password;
+        }
+        
+        public String getEmail() {
+            return email;
+        }
+        
+        public void setEmail(String email) {
+            this.email = email;
+        }
+        
+        public String getPhone() {
+            return phone;
+        }
+        
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
     }
 
     /**
      * 注册响应DTO
      */
-    @lombok.Data
-    @lombok.Builder
     public static class RegisterResponse {
         private String username;
         private String email;
         private String message;
+        
+        public static RegisterResponseBuilder builder() {
+            return new RegisterResponseBuilder();
+        }
+        
+        public static class RegisterResponseBuilder {
+            private String username;
+            private String email;
+            private String message;
+            
+            public RegisterResponseBuilder username(String username) {
+                this.username = username;
+                return this;
+            }
+            
+            public RegisterResponseBuilder email(String email) {
+                this.email = email;
+                return this;
+            }
+            
+            public RegisterResponseBuilder message(String message) {
+                this.message = message;
+                return this;
+            }
+            
+            public RegisterResponse build() {
+                RegisterResponse response = new RegisterResponse();
+                response.username = this.username;
+                response.email = this.email;
+                response.message = this.message;
+                return response;
+            }
+        }
+        
+        // Getter和Setter方法
+        public String getUsername() {
+            return username;
+        }
+        
+        public void setUsername(String username) {
+            this.username = username;
+        }
+        
+        public String getEmail() {
+            return email;
+        }
+        
+        public void setEmail(String email) {
+            this.email = email;
+        }
+        
+        public String getMessage() {
+            return message;
+        }
+        
+        public void setMessage(String message) {
+            this.message = message;
+        }
     }
 
     /**
      * 刷新令牌请求DTO
      */
-    @lombok.Data
     public static class RefreshRequest {
         @NotBlank(message = "刷新令牌不能为空")
         private String refreshToken;
+        
+        // Getter和Setter方法
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+        
+        public void setRefreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+        }
     }
 
     /**
      * 刷新令牌响应DTO
      */
-    @lombok.Data
-    @lombok.Builder
     public static class RefreshResponse {
         private String accessToken;
         private String tokenType;
         private Long expiresIn;
+        
+        public static RefreshResponseBuilder builder() {
+            return new RefreshResponseBuilder();
+        }
+        
+        public static class RefreshResponseBuilder {
+            private String accessToken;
+            private String tokenType;
+            private Long expiresIn;
+            
+            public RefreshResponseBuilder accessToken(String accessToken) {
+                this.accessToken = accessToken;
+                return this;
+            }
+            
+            public RefreshResponseBuilder tokenType(String tokenType) {
+                this.tokenType = tokenType;
+                return this;
+            }
+            
+            public RefreshResponseBuilder expiresIn(Long expiresIn) {
+                this.expiresIn = expiresIn;
+                return this;
+            }
+            
+            public RefreshResponse build() {
+                RefreshResponse response = new RefreshResponse();
+                response.accessToken = this.accessToken;
+                response.tokenType = this.tokenType;
+                response.expiresIn = this.expiresIn;
+                return response;
+            }
+        }
+        
+        // Getter和Setter方法
+        public String getAccessToken() {
+            return accessToken;
+        }
+        
+        public void setAccessToken(String accessToken) {
+            this.accessToken = accessToken;
+        }
+        
+        public String getTokenType() {
+            return tokenType;
+        }
+        
+        public void setTokenType(String tokenType) {
+            this.tokenType = tokenType;
+        }
+        
+        public Long getExpiresIn() {
+            return expiresIn;
+        }
+        
+        public void setExpiresIn(Long expiresIn) {
+            this.expiresIn = expiresIn;
+        }
     }
 
     /**
      * 登出请求DTO
      */
-    @lombok.Data
     public static class LogoutRequest {
         private String accessToken;
+        
+        // Getter和Setter方法
+        public String getAccessToken() {
+            return accessToken;
+        }
+        
+        public void setAccessToken(String accessToken) {
+            this.accessToken = accessToken;
+        }
     }
 
     /**
      * 用户信息DTO
      */
-    @lombok.Data
-    @lombok.Builder
     public static class UserInfo {
         private String username;
         private String email;
-        private java.util.List<String> roles;
+        private List<String> roles;
+        
+        public static UserInfoBuilder builder() {
+            return new UserInfoBuilder();
+        }
+        
+        public static class UserInfoBuilder {
+            private String username;
+            private String email;
+            private List<String> roles;
+            
+            public UserInfoBuilder username(String username) {
+                this.username = username;
+                return this;
+            }
+            
+            public UserInfoBuilder email(String email) {
+                this.email = email;
+                return this;
+            }
+            
+            public UserInfoBuilder roles(List<String> roles) {
+                this.roles = roles;
+                return this;
+            }
+            
+            public UserInfo build() {
+                UserInfo userInfo = new UserInfo();
+                userInfo.username = this.username;
+                userInfo.email = this.email;
+                userInfo.roles = this.roles;
+                return userInfo;
+            }
+        }
+        
+        // Getter和Setter方法
+        public String getUsername() {
+            return username;
+        }
+        
+        public void setUsername(String username) {
+            this.username = username;
+        }
+        
+        public String getEmail() {
+            return email;
+        }
+        
+        public void setEmail(String email) {
+            this.email = email;
+        }
+        
+        public List<String> getRoles() {
+            return roles;
+        }
+        
+        public void setRoles(List<String> roles) {
+            this.roles = roles;
+        }
     }
 }

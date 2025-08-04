@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.leadexchange.modules.lead.mapper.LeadMapper">
 
-    <!-- 线索结果映射 -->
+    <!-- Lead result mapping -->
     <resultMap id="BaseResultMap" type="com.leadexchange.modules.lead.entity.Lead">
         <id column="id" property="id" jdbcType="BIGINT"/>
         <result column="title" property="title" jdbcType="VARCHAR"/>
@@ -45,7 +45,7 @@
         <result column="version" property="version" jdbcType="INTEGER"/>
     </resultMap>
 
-    <!-- 基础字段 -->
+    <!-- Base column list -->
     <sql id="Base_Column_List">
         id, title, description, lead_type, status, rating, rating_score, industry, region,
         investment_amount, project_scale, contact_name, contact_position, contact_phone, contact_email,
@@ -55,7 +55,7 @@
         create_time, update_time, create_by, update_by, deleted, version
     </sql>
 
-    <!-- 分页查询线索列表 -->
+    <!-- Paginated lead list query -->
     <select id="selectLeadPage" resultMap="BaseResultMap">
         SELECT
         <include refid="Base_Column_List"/>
@@ -92,7 +92,7 @@
             create_time DESC
     </select>
 
-    <!-- 智能推荐线索查询 -->
+    <!-- Smart recommended leads query -->
     <select id="findRecommendedLeads" resultMap="BaseResultMap">
         SELECT
         <include refid="Base_Column_List"/>
@@ -100,19 +100,14 @@
         WHERE deleted = 0
         AND status = 3
         AND (
-            <!-- 同行业推荐 -->
             industry = #{userIndustry}
-            <!-- 同地区推荐 -->
             OR region = #{userRegion}
-            <!-- 投资金额匹配 -->
             <if test="minInvestment != null and maxInvestment != null">
-                OR (investment_amount BETWEEN #{minInvestment} AND #{maxInvestment})
+                OR (investment_amount BETWEEN #{minInvestment} &amp; #{maxInvestment})
             </if>
         )
-        <!-- 排除用户自己发布的线索 -->
         AND create_by != #{userId}
         ORDER BY 
-            <!-- 优先推荐同行业 -->
             CASE WHEN industry = #{userIndustry} THEN 1 ELSE 2 END,
             rating_score DESC,
             view_count DESC,
@@ -120,17 +115,16 @@
         LIMIT #{limit}
     </select>
 
-    <!-- 线索匹配度查询 -->
+    <!-- Lead matching query -->
     <select id="findMatchingLeads" resultMap="BaseResultMap">
         SELECT
         <include refid="Base_Column_List"/>,
-        <!-- 计算匹配度分数 -->
         (
             CASE WHEN industry = #{targetIndustry} THEN 30 ELSE 0 END +
             CASE WHEN region = #{targetRegion} THEN 20 ELSE 0 END +
             CASE WHEN project_scale = #{targetScale} THEN 15 ELSE 0 END +
             CASE WHEN company_scale = #{targetCompanyScale} THEN 10 ELSE 0 END +
-            CASE WHEN rating = 'A' THEN 25 WHEN rating = 'B' THEN 20 WHEN rating = 'C' THEN 15 ELSE 10 END
+            CASE WHEN rating = &apos;A&apos; THEN 25 WHEN rating = &apos;B&apos; THEN 20 WHEN rating = &apos;C&apos; THEN 15 ELSE 10 END
         ) AS match_score
         FROM biz_lead
         WHERE deleted = 0
@@ -147,7 +141,7 @@
         LIMIT #{limit}
     </select>
 
-    <!-- 统计用户线索数据 -->
+    <!-- User lead statistics -->
     <select id="getUserLeadStats" resultType="java.util.Map">
         SELECT
             COUNT(*) as totalCount,
@@ -165,21 +159,21 @@
         AND deleted = 0
     </select>
 
-    <!-- 热门搜索关键词统计 -->
+    <!-- Hot search keywords statistics -->
     <select id="getHotSearchKeywords" resultType="java.util.Map">
         SELECT
             keyword,
             search_count,
             last_search_time
         FROM biz_search_log
-        WHERE search_date >= #{startDate}
-        AND search_date <= #{endDate}
+        WHERE search_date &gt;= #{startDate}
+        AND search_date &lt;= #{endDate}
         GROUP BY keyword
         ORDER BY search_count DESC
         LIMIT #{limit}
     </select>
 
-    <!-- 批量更新线索状态 -->
+    <!-- Batch update lead status -->
     <update id="batchUpdateStatus">
         UPDATE biz_lead
         SET status = #{status},
@@ -192,7 +186,7 @@
         AND deleted = 0
     </update>
 
-    <!-- 批量更新线索评级 -->
+    <!-- Batch update lead rating -->
     <update id="batchUpdateRating">
         UPDATE biz_lead
         SET rating = #{rating},
@@ -206,18 +200,84 @@
         AND deleted = 0
     </update>
 
-    <!-- 清理过期线索 -->
+    <!-- Clean expired leads -->
     <update id="cleanExpiredLeads">
         UPDATE biz_lead
         SET status = 6,
             update_time = #{currentTime},
-            remark = CONCAT(IFNULL(remark, ''), '; 系统自动下架：线索已过期')
-        WHERE expire_time < #{currentTime}
+            remark = CONCAT(IFNULL(remark, ''), '; Auto archived: lead expired')
+        WHERE expire_time &lt; #{currentTime}
         AND status IN (1, 2, 3, 4)
         AND deleted = 0
     </update>
 
-    <!-- 线索数据统计报表 -->
+    <!-- Find leads by industry -->
+    <select id="findLeadsByIndustry" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM biz_lead
+        WHERE deleted = 0
+        AND status = 3
+        AND industry = #{industry}
+        ORDER BY rating_score DESC, create_time DESC
+    </select>
+
+    <!-- Find leads by region -->
+    <select id="findLeadsByRegion" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM biz_lead
+        WHERE deleted = 0
+        AND status = 3
+        AND region = #{region}
+        ORDER BY rating_score DESC, create_time DESC
+    </select>
+
+    <!-- Find leads by rating -->
+    <select id="findLeadsByRating" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM biz_lead
+        WHERE deleted = 0
+        AND status = 3
+        AND rating = #{rating}
+        ORDER BY rating_score DESC, create_time DESC
+    </select>
+
+    <!-- Count leads by rating -->
+    <select id="countLeadsByRating" resultType="java.util.Map">
+        SELECT
+            rating as key,
+            COUNT(*) as value
+        FROM biz_lead
+        WHERE deleted = 0 AND status = 3
+        GROUP BY rating
+        ORDER BY value DESC
+    </select>
+
+    <!-- Count leads by industry -->
+    <select id="countLeadsByIndustry" resultType="java.util.Map">
+        SELECT
+            industry as key,
+            COUNT(*) as value
+        FROM biz_lead
+        WHERE deleted = 0 AND status = 3
+        GROUP BY industry
+        ORDER BY value DESC
+    </select>
+
+    <!-- Count leads by region -->
+    <select id="countLeadsByRegion" resultType="java.util.Map">
+        SELECT
+            region as key,
+            COUNT(*) as value
+        FROM biz_lead
+        WHERE deleted = 0 AND status = 3
+        GROUP BY region
+        ORDER BY value DESC
+    </select>
+
+    <!-- Lead statistics report -->
     <select id="getLeadStatistics" resultType="java.util.Map">
         SELECT
             DATE(create_time) as date,
@@ -225,13 +285,13 @@
             SUM(CASE WHEN lead_type = 1 THEN 1 ELSE 0 END) as investmentCount,
             SUM(CASE WHEN lead_type = 2 THEN 1 ELSE 0 END) as projectCount,
             SUM(CASE WHEN lead_type = 3 THEN 1 ELSE 0 END) as cooperationCount,
-            SUM(CASE WHEN rating = 'A' THEN 1 ELSE 0 END) as ratingACount,
-            SUM(CASE WHEN rating = 'B' THEN 1 ELSE 0 END) as ratingBCount,
-            SUM(CASE WHEN rating = 'C' THEN 1 ELSE 0 END) as ratingCCount,
-            SUM(CASE WHEN rating = 'D' THEN 1 ELSE 0 END) as ratingDCount
+            SUM(CASE WHEN rating = &apos;A&apos; THEN 1 ELSE 0 END) as ratingACount,
+            SUM(CASE WHEN rating = &apos;B&apos; THEN 1 ELSE 0 END) as ratingBCount,
+            SUM(CASE WHEN rating = &apos;C&apos; THEN 1 ELSE 0 END) as ratingCCount,
+            SUM(CASE WHEN rating = &apos;D&apos; THEN 1 ELSE 0 END) as ratingDCount
         FROM biz_lead
-        WHERE create_time >= #{startDate}
-        AND create_time <= #{endDate}
+        WHERE create_time &gt;= #{startDate}
+        AND create_time &lt;= #{endDate}
         AND deleted = 0
         GROUP BY DATE(create_time)
         ORDER BY date DESC

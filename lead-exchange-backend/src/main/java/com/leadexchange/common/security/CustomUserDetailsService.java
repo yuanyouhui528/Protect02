@@ -1,6 +1,7 @@
 package com.leadexchange.common.security;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -23,10 +24,11 @@ import java.util.List;
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
 @Service
 @Transactional(readOnly = true)
 public class CustomUserDetailsService implements UserDetailsService {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomUserDetailsService.class);
 
     // TODO: 注入用户服务和权限服务
     // @Autowired
@@ -176,8 +178,6 @@ public class CustomUserDetailsService implements UserDetailsService {
      * 用户信息内部类
      * TODO: 后续可以替换为实际的用户实体类
      */
-    @lombok.Data
-    @lombok.Builder
     private static class UserInfo {
         private Long id;
         private String username;
@@ -189,5 +189,73 @@ public class CustomUserDetailsService implements UserDetailsService {
         private boolean accountNonLocked;
         private boolean credentialsNonExpired;
         private List<String> roles;
+
+        // Getters
+        public Long getId() { return id; }
+        public String getUsername() { return username; }
+        public String getPassword() { return password; }
+        public String getEmail() { return email; }
+        public String getPhone() { return phone; }
+        public boolean isEnabled() { return enabled; }
+        public boolean isAccountNonExpired() { return accountNonExpired; }
+        public boolean isAccountNonLocked() { return accountNonLocked; }
+        public boolean isCredentialsNonExpired() { return credentialsNonExpired; }
+        public List<String> getRoles() { return roles; }
+
+        // Setters
+        public void setId(Long id) { this.id = id; }
+        public void setUsername(String username) { this.username = username; }
+        public void setPassword(String password) { this.password = password; }
+        public void setEmail(String email) { this.email = email; }
+        public void setPhone(String phone) { this.phone = phone; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        public void setAccountNonExpired(boolean accountNonExpired) { this.accountNonExpired = accountNonExpired; }
+        public void setAccountNonLocked(boolean accountNonLocked) { this.accountNonLocked = accountNonLocked; }
+        public void setCredentialsNonExpired(boolean credentialsNonExpired) { this.credentialsNonExpired = credentialsNonExpired; }
+        public void setRoles(List<String> roles) { this.roles = roles; }
+
+        // Builder pattern
+        public static UserInfoBuilder builder() {
+            return new UserInfoBuilder();
+        }
+
+        public static class UserInfoBuilder {
+            private Long id;
+            private String username;
+            private String password;
+            private String email;
+            private String phone;
+            private boolean enabled;
+            private boolean accountNonExpired;
+            private boolean accountNonLocked;
+            private boolean credentialsNonExpired;
+            private List<String> roles;
+
+            public UserInfoBuilder id(Long id) { this.id = id; return this; }
+            public UserInfoBuilder username(String username) { this.username = username; return this; }
+            public UserInfoBuilder password(String password) { this.password = password; return this; }
+            public UserInfoBuilder email(String email) { this.email = email; return this; }
+            public UserInfoBuilder phone(String phone) { this.phone = phone; return this; }
+            public UserInfoBuilder enabled(boolean enabled) { this.enabled = enabled; return this; }
+            public UserInfoBuilder accountNonExpired(boolean accountNonExpired) { this.accountNonExpired = accountNonExpired; return this; }
+            public UserInfoBuilder accountNonLocked(boolean accountNonLocked) { this.accountNonLocked = accountNonLocked; return this; }
+            public UserInfoBuilder credentialsNonExpired(boolean credentialsNonExpired) { this.credentialsNonExpired = credentialsNonExpired; return this; }
+            public UserInfoBuilder roles(List<String> roles) { this.roles = roles; return this; }
+
+            public UserInfo build() {
+                UserInfo userInfo = new UserInfo();
+                userInfo.setId(this.id);
+                userInfo.setUsername(this.username);
+                userInfo.setPassword(this.password);
+                userInfo.setEmail(this.email);
+                userInfo.setPhone(this.phone);
+                userInfo.setEnabled(this.enabled);
+                userInfo.setAccountNonExpired(this.accountNonExpired);
+                userInfo.setAccountNonLocked(this.accountNonLocked);
+                userInfo.setCredentialsNonExpired(this.credentialsNonExpired);
+                userInfo.setRoles(this.roles);
+                return userInfo;
+            }
+        }
     }
 }

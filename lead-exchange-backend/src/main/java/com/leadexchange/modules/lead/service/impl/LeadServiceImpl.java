@@ -8,8 +8,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.leadexchange.modules.lead.entity.Lead;
 import com.leadexchange.modules.lead.mapper.LeadMapper;
 import com.leadexchange.modules.lead.service.LeadService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -26,12 +26,15 @@ import java.util.stream.Collectors;
  * @author leadexchange
  * @since 2024-01-01
  */
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class LeadServiceImpl extends ServiceImpl<LeadMapper, Lead> implements LeadService {
 
+    private static final Logger log = LoggerFactory.getLogger(LeadServiceImpl.class);
     private final LeadMapper leadMapper;
+
+    public LeadServiceImpl(LeadMapper leadMapper) {
+        this.leadMapper = leadMapper;
+    }
 
     @Override
     public IPage<Lead> getLeadPage(Integer page, Integer size, Integer leadType, Integer status,
@@ -74,7 +77,8 @@ public class LeadServiceImpl extends ServiceImpl<LeadMapper, Lead> implements Le
 
     @Override
     public List<Lead> getRecommendedLeads(Integer limit) {
-        return leadMapper.findRecommendedLeads(limit);
+        // 使用默认参数进行推荐查询
+        return leadMapper.findRecommendedLeads(null, null, null, null, null, limit);
     }
 
     @Override

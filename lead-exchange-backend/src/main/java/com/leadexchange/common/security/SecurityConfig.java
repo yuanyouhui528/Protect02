@@ -115,7 +115,7 @@ public class SecurityConfig {
                 .contentTypeOptions().and() // 启用X-Content-Type-Options
                 .httpStrictTransportSecurity(hstsConfig -> hstsConfig
                     .maxAgeInSeconds(31536000) // HSTS最大年龄1年
-                    .includeSubdomains(true)
+                    .includeSubDomains(true) // 包含子域名
                 )
                 .referrerPolicy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
             )
@@ -123,7 +123,7 @@ public class SecurityConfig {
             // 配置授权规则
             .authorizeHttpRequests(authz -> authz
                 // 公开访问的端点
-                .requestMatchers(
+                .antMatchers(
                     "/api/auth/**",
                     "/api/public/**",
                     "/actuator/health",
@@ -135,36 +135,36 @@ public class SecurityConfig {
                 ).permitAll()
                 
                 // OPTIONS请求允许所有人访问（CORS预检请求）
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
                 // 管理员专用端点
-                .requestMatchers("/api/admin/**")
+                .antMatchers("/api/admin/**")
                     .hasRole(SecurityConstants.AUTHORITY.ADMIN)
                 
                 // 用户管理相关端点
-                .requestMatchers(HttpMethod.GET, "/api/user/profile")
+                .antMatchers(HttpMethod.GET, "/api/user/profile")
                     .hasAnyRole(SecurityConstants.AUTHORITY.USER, SecurityConstants.AUTHORITY.ADMIN)
-                .requestMatchers(HttpMethod.PUT, "/api/user/profile")
+                .antMatchers(HttpMethod.PUT, "/api/user/profile")
                     .hasAnyRole(SecurityConstants.AUTHORITY.USER, SecurityConstants.AUTHORITY.ADMIN)
                 
                 // 线索管理相关端点
-                .requestMatchers("/api/lead/**")
+                .antMatchers("/api/lead/**")
                     .hasAnyRole(SecurityConstants.AUTHORITY.USER, SecurityConstants.AUTHORITY.ENTERPRISE, SecurityConstants.AUTHORITY.ADMIN)
                 
                 // 评级引擎相关端点
-                .requestMatchers("/api/rating/**")
+                .antMatchers("/api/rating/**")
                     .hasAnyRole(SecurityConstants.AUTHORITY.USER, SecurityConstants.AUTHORITY.ADMIN)
                 
                 // 交换引擎相关端点
-                .requestMatchers("/api/exchange/**")
+                .antMatchers("/api/exchange/**")
                     .hasAnyRole(SecurityConstants.AUTHORITY.USER, SecurityConstants.AUTHORITY.ENTERPRISE, SecurityConstants.AUTHORITY.ADMIN)
                 
                 // 数据分析相关端点
-                .requestMatchers("/api/analytics/**")
+                .antMatchers("/api/analytics/**")
                     .hasAnyRole(SecurityConstants.AUTHORITY.ADMIN, SecurityConstants.AUTHORITY.ENTERPRISE)
                 
                 // 通知服务相关端点
-                .requestMatchers("/api/notification/**")
+                .antMatchers("/api/notification/**")
                     .hasAnyRole(SecurityConstants.AUTHORITY.USER, SecurityConstants.AUTHORITY.ADMIN)
                 
                 // 其他所有请求都需要认证

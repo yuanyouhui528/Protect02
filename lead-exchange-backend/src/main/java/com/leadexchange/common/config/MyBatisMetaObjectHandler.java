@@ -1,8 +1,9 @@
 package com.leadexchange.common.config;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -15,9 +16,10 @@ import java.time.LocalDateTime;
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
 @Component
 public class MyBatisMetaObjectHandler implements MetaObjectHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(MyBatisMetaObjectHandler.class);
 
     /**
      * 插入时自动填充

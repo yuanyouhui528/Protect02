@@ -31,7 +31,7 @@
         <result column="version" property="version" jdbcType="INTEGER"/>
     </resultMap>
 
-    <!-- 基础字段 -->
+    <!-- 基础字段列表 -->
     <sql id="Base_Column_List">
         id, username, password, real_name, email, phone, status, user_type,
         company_name, company_code, company_scale, industry, region, avatar,
@@ -63,7 +63,7 @@
         ORDER BY create_time DESC
     </select>
 
-    <!-- 根据行业查询企业用户（复杂查询示例） -->
+    <!-- 根据行业和地区查找企业用户 -->
     <select id="findEnterpriseUsersByIndustryAndRegion" resultMap="BaseResultMap">
         SELECT
         <include refid="Base_Column_List"/>
@@ -83,7 +83,7 @@
         ORDER BY create_time DESC
     </select>
 
-    <!-- 统计各类型用户数量 -->
+    <!-- 按类型统计用户数量 -->
     <select id="countUsersByType" resultType="java.util.Map">
         SELECT
             user_type as userType,
@@ -96,25 +96,25 @@
         GROUP BY user_type
     </select>
 
-    <!-- 查询最近注册的用户 -->
+    <!-- 查找最近注册的用户 -->
     <select id="findRecentUsers" resultMap="BaseResultMap">
         SELECT
         <include refid="Base_Column_List"/>
         FROM sys_user
         WHERE deleted = 0
-        AND create_time >= #{startTime}
+        AND create_time &gt;= #{startTime}
         ORDER BY create_time DESC
         LIMIT #{limit}
     </select>
 
-    <!-- 查询活跃用户（最近登录） -->
+    <!-- 查找活跃用户（最近登录） -->
     <select id="findActiveUsers" resultMap="BaseResultMap">
         SELECT
         <include refid="Base_Column_List"/>
         FROM sys_user
         WHERE deleted = 0
         AND status = 1
-        AND last_login_time >= #{startTime}
+        AND last_login_time &gt;= #{startTime}
         ORDER BY last_login_time DESC
         LIMIT #{limit}
     </select>
@@ -132,7 +132,7 @@
         AND deleted = 0
     </update>
 
-    <!-- 清理过期锁定的用户 -->
+    <!-- 清理过期的用户锁定 -->
     <update id="clearExpiredLocks">
         UPDATE sys_user
         SET lock_time = NULL,
@@ -140,7 +140,7 @@
             update_time = NOW()
         WHERE deleted = 0
         AND lock_time IS NOT NULL
-        AND lock_time < NOW()
+        AND lock_time &lt; NOW()
     </update>
 
 </mapper>
