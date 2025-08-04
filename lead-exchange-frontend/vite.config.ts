@@ -9,12 +9,26 @@ export default defineConfig(({ command, mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
   
+  // 开发环境性能优化标志
+  const isDevOptimized = env.VITE_DEV_PERFORMANCE_MODE === 'true'
+  const isDev = command === 'serve'
+  
   return {
     plugins: [
-      vue(),
-      vueJsx(),
-      // 只在开发环境启用Vue DevTools
-      ...(env.VITE_FEATURE_DEVTOOLS === 'true' ? [vueDevTools()] : []),
+      vue({
+        // 开发环境优化：禁用模板编译缓存清理
+        template: {
+          compilerOptions: {
+            // 开发环境下禁用一些编译时优化，加快编译速度
+            hoistStatic: !isDevOptimized,
+            cacheHandlers: !isDevOptimized
+          }
+        }
+      }),
+      // 开发环境优化：条件加载JSX插件
+      ...(isDevOptimized ? [] : [vueJsx()]),
+      // 只在开发环境且未启用性能模式时启用Vue DevTools
+      ...(env.VITE_FEATURE_DEVTOOLS === 'true' && !isDevOptimized ? [vueDevTools()] : []),
     ],
     resolve: {
       alias: {
@@ -30,8 +44,17 @@ export default defineConfig(({ command, mode }) => {
     server: {
       host: true,
       port: 5173,
-      open: true,
+      open: !isDevOptimized, // 性能模式下不自动打开浏览器
       cors: true,
+      // 开发环境性能优化
+      ...(isDevOptimized && {
+        hmr: {
+          overlay: false // 禁用错误覆盖层，减少渲染开销
+        },
+        fs: {
+          strict: false // 放宽文件系统限制，加快文件访问
+        }
+      }),
       // API代理配置
       proxy: {
         '/api': {
@@ -48,6 +71,8 @@ export default defineConfig(({ command, mode }) => {
       assetsDir: 'assets',
       sourcemap: env.VITE_PROD_SOURCE_MAP === 'true',
       minify: env.VITE_PROD_MINIFY !== 'false' ? 'terser' : false,
+      // 开发环境性能优化：禁用CSS代码分割
+      cssCodeSplit: !(isDev && isDevOptimized),
       // 分包策略
       rollupOptions: {
         output: {
@@ -84,7 +109,13 @@ export default defineConfig(({ command, mode }) => {
     },
     // 优化配置
     optimizeDeps: {
-      include: [
+      // 开发环境性能优化：减少预构建依赖
+      include: isDevOptimized ? [
+        'vue',
+        'vue-router',
+        'pinia',
+        'axios'
+      ] : [
         'vue',
         'vue-router',
         'pinia',
@@ -94,7 +125,20 @@ export default defineConfig(({ command, mode }) => {
         'element-plus/es/components/message-box/style/css',
         'echarts',
         'axios'
-      ]
-    }
+      ],
+      // 开发环境性能优化：部分排除大型依赖的预构建
+      ...(isDevOptimized && {
+        exclude: ['@element-plus/icons-vue'],
+        force: false // 不强制重新预构建
+      })
+    },
+    
+    // 开发环境esbuild性能优化配置
+    esbuild: isDev && isDevOptimized ? {
+      // 开发环境下设置编译目标，简化构建过程
+      target: 'es2015',
+      // 开发环境下禁用压缩以提高构建速度
+      minify: false
+    } : undefined
   }
 })
