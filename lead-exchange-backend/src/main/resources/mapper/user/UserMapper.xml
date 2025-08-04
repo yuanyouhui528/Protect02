@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.leadexchange.modules.user.mapper.UserMapper">
+
+    <!-- 用户结果映射 -->
+    <resultMap id="BaseResultMap" type="com.leadexchange.modules.user.entity.User">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="password" property="password" jdbcType="VARCHAR"/>
+        <result column="real_name" property="realName" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="user_type" property="userType" jdbcType="INTEGER"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="company_code" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="company_scale" property="companyScale" jdbcType="INTEGER"/>
+        <result column="industry" property="industry" jdbcType="VARCHAR"/>
+        <result column="region" property="region" jdbcType="VARCHAR"/>
+        <result column="avatar" property="avatar" jdbcType="VARCHAR"/>
+        <result column="last_login_time" property="lastLoginTime" jdbcType="TIMESTAMP"/>
+        <result column="last_login_ip" property="lastLoginIp" jdbcType="VARCHAR"/>
+        <result column="login_fail_count" property="loginFailCount" jdbcType="INTEGER"/>
+        <result column="lock_time" property="lockTime" jdbcType="TIMESTAMP"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="create_by" property="createBy" jdbcType="BIGINT"/>
+        <result column="update_by" property="updateBy" jdbcType="BIGINT"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+        <result column="version" property="version" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, username, password, real_name, email, phone, status, user_type,
+        company_name, company_code, company_scale, industry, region, avatar,
+        last_login_time, last_login_ip, login_fail_count, lock_time, remark,
+        create_time, update_time, create_by, update_by, deleted, version
+    </sql>
+
+    <!-- 分页查询用户列表 -->
+    <select id="selectUserPage" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE deleted = 0
+        <if test="userType != null">
+            AND user_type = #{userType}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                username LIKE CONCAT('%', #{keyword}, '%')
+                OR real_name LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+                OR phone LIKE CONCAT('%', #{keyword}, '%')
+                OR company_name LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据行业查询企业用户（复杂查询示例） -->
+    <select id="findEnterpriseUsersByIndustryAndRegion" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE deleted = 0
+        AND user_type = 2
+        AND status = 1
+        <if test="industry != null and industry != ''">
+            AND industry = #{industry}
+        </if>
+        <if test="region != null and region != ''">
+            AND region = #{region}
+        </if>
+        <if test="companyScale != null">
+            AND company_scale = #{companyScale}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 统计各类型用户数量 -->
+    <select id="countUsersByType" resultType="java.util.Map">
+        SELECT
+            user_type as userType,
+            COUNT(*) as count
+        FROM sys_user
+        WHERE deleted = 0
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        GROUP BY user_type
+    </select>
+
+    <!-- 查询最近注册的用户 -->
+    <select id="findRecentUsers" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE deleted = 0
+        AND create_time >= #{startTime}
+        ORDER BY create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 查询活跃用户（最近登录） -->
+    <select id="findActiveUsers" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE deleted = 0
+        AND status = 1
+        AND last_login_time >= #{startTime}
+        ORDER BY last_login_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 批量更新用户状态 -->
+    <update id="batchUpdateStatus">
+        UPDATE sys_user
+        SET status = #{status},
+            update_time = NOW(),
+            update_by = #{updateBy}
+        WHERE id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        AND deleted = 0
+    </update>
+
+    <!-- 清理过期锁定的用户 -->
+    <update id="clearExpiredLocks">
+        UPDATE sys_user
+        SET lock_time = NULL,
+            login_fail_count = 0,
+            update_time = NOW()
+        WHERE deleted = 0
+        AND lock_time IS NOT NULL
+        AND lock_time < NOW()
+    </update>
+
+</mapper>

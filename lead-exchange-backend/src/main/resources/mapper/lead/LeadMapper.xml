@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.leadexchange.modules.lead.mapper.LeadMapper">
+
+    <!-- 线索结果映射 -->
+    <resultMap id="BaseResultMap" type="com.leadexchange.modules.lead.entity.Lead">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="TEXT"/>
+        <result column="lead_type" property="leadType" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="rating" property="rating" jdbcType="VARCHAR"/>
+        <result column="rating_score" property="ratingScore" jdbcType="INTEGER"/>
+        <result column="industry" property="industry" jdbcType="VARCHAR"/>
+        <result column="region" property="region" jdbcType="VARCHAR"/>
+        <result column="investment_amount" property="investmentAmount" jdbcType="DECIMAL"/>
+        <result column="project_scale" property="projectScale" jdbcType="INTEGER"/>
+        <result column="contact_name" property="contactName" jdbcType="VARCHAR"/>
+        <result column="contact_position" property="contactPosition" jdbcType="VARCHAR"/>
+        <result column="contact_phone" property="contactPhone" jdbcType="VARCHAR"/>
+        <result column="contact_email" property="contactEmail" jdbcType="VARCHAR"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="company_code" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="company_scale" property="companyScale" jdbcType="INTEGER"/>
+        <result column="company_nature" property="companyNature" jdbcType="INTEGER"/>
+        <result column="source" property="source" jdbcType="INTEGER"/>
+        <result column="tags" property="tags" jdbcType="TEXT"/>
+        <result column="attachments" property="attachments" jdbcType="TEXT"/>
+        <result column="expire_time" property="expireTime" jdbcType="TIMESTAMP"/>
+        <result column="publish_time" property="publishTime" jdbcType="TIMESTAMP"/>
+        <result column="audit_time" property="auditTime" jdbcType="TIMESTAMP"/>
+        <result column="audit_by" property="auditBy" jdbcType="BIGINT"/>
+        <result column="audit_remark" property="auditRemark" jdbcType="TEXT"/>
+        <result column="view_count" property="viewCount" jdbcType="INTEGER"/>
+        <result column="favorite_count" property="favoriteCount" jdbcType="INTEGER"/>
+        <result column="exchange_count" property="exchangeCount" jdbcType="INTEGER"/>
+        <result column="is_top" property="isTop" jdbcType="INTEGER"/>
+        <result column="is_recommend" property="isRecommend" jdbcType="INTEGER"/>
+        <result column="remark" property="remark" jdbcType="TEXT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="create_by" property="createBy" jdbcType="BIGINT"/>
+        <result column="update_by" property="updateBy" jdbcType="BIGINT"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+        <result column="version" property="version" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, title, description, lead_type, status, rating, rating_score, industry, region,
+        investment_amount, project_scale, contact_name, contact_position, contact_phone, contact_email,
+        company_name, company_code, company_scale, company_nature, source, tags, attachments,
+        expire_time, publish_time, audit_time, audit_by, audit_remark,
+        view_count, favorite_count, exchange_count, is_top, is_recommend, remark,
+        create_time, update_time, create_by, update_by, deleted, version
+    </sql>
+
+    <!-- 分页查询线索列表 -->
+    <select id="selectLeadPage" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM biz_lead
+        WHERE deleted = 0
+        <if test="leadType != null">
+            AND lead_type = #{leadType}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        <if test="rating != null and rating != ''">
+            AND rating = #{rating}
+        </if>
+        <if test="industry != null and industry != ''">
+            AND industry = #{industry}
+        </if>
+        <if test="region != null and region != ''">
+            AND region = #{region}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                title LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%')
+                OR company_name LIKE CONCAT('%', #{keyword}, '%')
+                OR contact_name LIKE CONCAT('%', #{keyword}, '%')
+                OR tags LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY 
+            is_top DESC,
+            is_recommend DESC,
+            rating_score DESC,
+            create_time DESC
+    </select>
+
+    <!-- 智能推荐线索查询 -->
+    <select id="findRecommendedLeads" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM biz_lead
+        WHERE deleted = 0
+        AND status = 3
+        AND (
+            <!-- 同行业推荐 -->
+            industry = #{userIndustry}
+            <!-- 同地区推荐 -->
+            OR region = #{userRegion}
+            <!-- 投资金额匹配 -->
+            <if test="minInvestment != null and maxInvestment != null">
+                OR (investment_amount BETWEEN #{minInvestment} AND #{maxInvestment})
+            </if>
+        )
+        <!-- 排除用户自己发布的线索 -->
+        AND create_by != #{userId}
+        ORDER BY 
+            <!-- 优先推荐同行业 -->
+            CASE WHEN industry = #{userIndustry} THEN 1 ELSE 2 END,
+            rating_score DESC,
+            view_count DESC,
+            create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 线索匹配度查询 -->
+    <select id="findMatchingLeads" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>,
+        <!-- 计算匹配度分数 -->
+        (
+            CASE WHEN industry = #{targetIndustry} THEN 30 ELSE 0 END +
+            CASE WHEN region = #{targetRegion} THEN 20 ELSE 0 END +
+            CASE WHEN project_scale = #{targetScale} THEN 15 ELSE 0 END +
+            CASE WHEN company_scale = #{targetCompanyScale} THEN 10 ELSE 0 END +
+            CASE WHEN rating = 'A' THEN 25 WHEN rating = 'B' THEN 20 WHEN rating = 'C' THEN 15 ELSE 10 END
+        ) AS match_score
+        FROM biz_lead
+        WHERE deleted = 0
+        AND status = 3
+        AND create_by != #{userId}
+        <if test="excludeLeadIds != null and excludeLeadIds.size() > 0">
+            AND id NOT IN
+            <foreach collection="excludeLeadIds" item="leadId" open="(" separator="," close=")">
+                #{leadId}
+            </foreach>
+        </if>
+        HAVING match_score >= #{minMatchScore}
+        ORDER BY match_score DESC, rating_score DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 统计用户线索数据 -->
+    <select id="getUserLeadStats" resultType="java.util.Map">
+        SELECT
+            COUNT(*) as totalCount,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as draftCount,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as auditingCount,
+            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as publishedCount,
+            SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as exchangingCount,
+            SUM(CASE WHEN status = 5 THEN 1 ELSE 0 END) as completedCount,
+            SUM(view_count) as totalViews,
+            SUM(favorite_count) as totalFavorites,
+            SUM(exchange_count) as totalExchanges,
+            AVG(rating_score) as avgRatingScore
+        FROM biz_lead
+        WHERE create_by = #{userId}
+        AND deleted = 0
+    </select>
+
+    <!-- 热门搜索关键词统计 -->
+    <select id="getHotSearchKeywords" resultType="java.util.Map">
+        SELECT
+            keyword,
+            search_count,
+            last_search_time
+        FROM biz_search_log
+        WHERE search_date >= #{startDate}
+        AND search_date <= #{endDate}
+        GROUP BY keyword
+        ORDER BY search_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 批量更新线索状态 -->
+    <update id="batchUpdateStatus">
+        UPDATE biz_lead
+        SET status = #{status},
+            update_time = NOW(),
+            update_by = #{updateBy}
+        WHERE id IN
+        <foreach collection="leadIds" item="leadId" open="(" separator="," close=")">
+            #{leadId}
+        </foreach>
+        AND deleted = 0
+    </update>
+
+    <!-- 批量更新线索评级 -->
+    <update id="batchUpdateRating">
+        UPDATE biz_lead
+        SET rating = #{rating},
+            rating_score = #{ratingScore},
+            update_time = NOW(),
+            update_by = #{updateBy}
+        WHERE id IN
+        <foreach collection="leadIds" item="leadId" open="(" separator="," close=")">
+            #{leadId}
+        </foreach>
+        AND deleted = 0
+    </update>
+
+    <!-- 清理过期线索 -->
+    <update id="cleanExpiredLeads">
+        UPDATE biz_lead
+        SET status = 6,
+            update_time = #{currentTime},
+            remark = CONCAT(IFNULL(remark, ''), '; 系统自动下架：线索已过期')
+        WHERE expire_time < #{currentTime}
+        AND status IN (1, 2, 3, 4)
+        AND deleted = 0
+    </update>
+
+    <!-- 线索数据统计报表 -->
+    <select id="getLeadStatistics" resultType="java.util.Map">
+        SELECT
+            DATE(create_time) as date,
+            COUNT(*) as totalCount,
+            SUM(CASE WHEN lead_type = 1 THEN 1 ELSE 0 END) as investmentCount,
+            SUM(CASE WHEN lead_type = 2 THEN 1 ELSE 0 END) as projectCount,
+            SUM(CASE WHEN lead_type = 3 THEN 1 ELSE 0 END) as cooperationCount,
+            SUM(CASE WHEN rating = 'A' THEN 1 ELSE 0 END) as ratingACount,
+            SUM(CASE WHEN rating = 'B' THEN 1 ELSE 0 END) as ratingBCount,
+            SUM(CASE WHEN rating = 'C' THEN 1 ELSE 0 END) as ratingCCount,
+            SUM(CASE WHEN rating = 'D' THEN 1 ELSE 0 END) as ratingDCount
+        FROM biz_lead
+        WHERE create_time >= #{startDate}
+        AND create_time <= #{endDate}
+        AND deleted = 0
+        GROUP BY DATE(create_time)
+        ORDER BY date DESC
+    </select>
+
+</mapper>
