@@ -22,13 +22,7 @@ const authState = reactive({
  * 用户认证组合式API
  */
 export function useAuth() {
-  // 安全获取router实例，避免在非Vue组件上下文中调用时出错
-  let router: any = null
-  try {
-    router = useRouter()
-  } catch (error) {
-    console.warn('无法获取router实例，可能在非Vue组件上下文中调用useAuth')
-  }
+  const router = useRouter()
 
   // ==================== 计算属性 ====================
 
@@ -242,10 +236,33 @@ export function useAuth() {
   }
 
   /**
-   * 检查认证状态（包含完整的安全验证）
+   * 检查认证状态（开发环境优化版本）
    */
   const checkAuthStatus = async (): Promise<boolean> => {
     try {
+      // 检查是否启用开发环境简化模式
+      const isDevSimplified = import.meta.env.VITE_DEV_SIMPLIFIED_GUARDS === 'true'
+      
+      if (isDevSimplified) {
+        // 开发环境简化模式：只检查基本token存在性
+        const token = await secureStorage.getItem<string>('access_token') || localStorage.getItem('lead_exchange_access_token')
+        
+        if (!token) {
+          console.warn('🚫 开发模式：未找到认证token')
+          return false
+        }
+        
+        // 简单检查token格式（避免空字符串）
+        if (token.length < 10) {
+          console.warn('🚫 开发模式：token格式无效')
+          return false
+        }
+        
+        console.log('✅ 开发模式：认证状态检查通过')
+        return true
+      }
+      
+      // 生产环境完整验证逻辑
       const validation = await validateCurrentToken()
       
       if (!validation.isValid) {
@@ -265,18 +282,41 @@ export function useAuth() {
       return true
     } catch (error) {
       console.error('认证状态检查异常:', error)
-      await logout()
+      
+      // 开发环境下不强制登出，避免频繁重新登录
+      const isDevSimplified = import.meta.env.VITE_DEV_SIMPLIFIED_GUARDS === 'true'
+      if (!isDevSimplified) {
+        await logout()
+      }
+      
       return false
     }
   }
 
   /**
-   * 检查用户是否有访问指定路由的权限
+   * 检查用户是否有访问指定路由的权限（开发环境优化版本）
    * @param requiredRoles 路由需要的角色
    * @param requiredPermissions 路由需要的权限
    */
   const checkRoutePermission = async (requiredRoles?: string[], requiredPermissions?: string[]): Promise<boolean> => {
     try {
+      // 检查是否启用开发环境简化模式
+      const isDevSimplified = import.meta.env.VITE_DEV_SIMPLIFIED_GUARDS === 'true'
+      
+      if (isDevSimplified) {
+        // 开发环境简化模式：只检查基本认证状态
+        const token = await secureStorage.getItem<string>('access_token') || localStorage.getItem('lead_exchange_access_token')
+        
+        if (!token) {
+          console.warn('🚫 开发模式：权限检查失败，未找到token')
+          return false
+        }
+        
+        console.log('✅ 开发模式：权限检查通过（跳过角色和权限验证）')
+        return true
+      }
+      
+      // 生产环境完整权限验证逻辑
       const token = await secureStorage.getItem<string>('access_token')
       
       if (!token) {

@@ -410,11 +410,11 @@ const defaultTheme = {
 // 注册默认主题
 echarts.registerTheme('default', defaultTheme)
 
-// 默认配置选项
+// 默认配置选项（开发环境优化版本）
 export const defaultOptions = {
-  // 全局配置
-  animation: true,
-  animationDuration: 1000,
+  // 全局配置 - 开发环境性能优化
+  animation: import.meta.env.VITE_DEV_DISABLE_CHART_ANIMATION !== 'true',
+  animationDuration: import.meta.env.VITE_DEV_DISABLE_CHART_ANIMATION === 'true' ? 0 : 1000,
   animationEasing: 'cubicOut' as const,
 
   // 响应式配置
@@ -428,6 +428,8 @@ export const defaultOptions = {
     textStyle: {
       color: '#fff',
     },
+    // 开发环境下简化tooltip渲染
+    renderMode: import.meta.env.VITE_DEV_SIMPLIFIED_CHARTS === 'true' ? 'html' : 'richText',
   },
 
   // 图例配置
@@ -445,6 +447,19 @@ export const defaultOptions = {
     bottom: '3%',
     containLabel: true,
   },
+
+  // 开发环境性能优化配置
+  ...(import.meta.env.VITE_DEV_SIMPLIFIED_CHARTS === 'true' && {
+    // 禁用不必要的视觉效果
+    emphasis: {
+      disabled: true
+    },
+    // 简化渲染
+    progressive: 0,
+    progressiveThreshold: 1000,
+    // 减少重绘
+    hoverLayerThreshold: 3000,
+  })
 }
 
 // 常用颜色配置
@@ -501,6 +516,65 @@ export const chartSizes = {
   medium: { width: 600, height: 400 },
   large: { width: 800, height: 500 },
   xlarge: { width: 1200, height: 600 },
+}
+
+// 开发环境优化的ECharts初始化函数
+export const initChart = (container: HTMLElement, theme?: string) => {
+  const isDevSimplified = import.meta.env.VITE_DEV_SIMPLIFIED_CHARTS === 'true'
+  
+  const chartOptions = {
+    renderer: 'canvas' as const,
+    useDirtyRect: !isDevSimplified, // 开发环境禁用脏矩形优化，减少计算开销
+    useCoarsePointer: isDevSimplified, // 开发环境启用粗糙指针，提升触摸性能
+    pointerSize: isDevSimplified ? 20 : 10, // 开发环境增大指针大小
+    ssr: false,
+    width: 'auto',
+    height: 'auto',
+    locale: 'ZH'
+  }
+  
+  const chart = echarts.init(container, theme || 'default', chartOptions)
+  
+  // 开发环境性能优化
+  if (isDevSimplified) {
+    console.log('🚀 ECharts开发模式：启用性能优化配置')
+    
+    // 禁用部分事件监听，减少性能开销
+    chart.getZr().off('click')
+    chart.getZr().off('dblclick')
+    chart.getZr().off('mousewheel')
+  }
+  
+  return chart
+}
+
+// 开发环境优化的图表配置合并函数
+export const mergeChartOptions = (userOptions: any) => {
+  const isDevSimplified = import.meta.env.VITE_DEV_SIMPLIFIED_CHARTS === 'true'
+  
+  if (isDevSimplified) {
+    // 开发环境下简化配置
+    const simplifiedOptions = {
+      ...defaultOptions,
+      ...userOptions,
+      // 强制禁用动画
+      animation: false,
+      animationDuration: 0,
+      // 简化数据处理
+      lazyUpdate: true,
+      // 减少渲染频率
+      silent: true
+    }
+    
+    console.log('🚀 ECharts开发模式：应用简化配置')
+    return simplifiedOptions
+  }
+  
+  // 生产环境完整配置
+  return {
+    ...defaultOptions,
+    ...userOptions
+  }
 }
 
 // 导出 echarts 实例

@@ -11,6 +11,13 @@ import {
   performanceMonitor
 } from '@/router/guards'
 
+// 导入环境配置
+const devEnvConfig = {
+  dev: {
+    simplifiedGuards: import.meta.env.VITE_DEV_SIMPLIFIED_GUARDS === 'true'
+  }
+}
+
 // 路由配置
 const routes: RouteRecordRaw[] = [
   {
@@ -139,17 +146,54 @@ if (envConfig.app.debug) {
   console.log('🚀 Router initialized with', routes.length, 'routes')
 }
 
-// 路由守卫 - 完善的安全认证和权限验证系统
+// 路由守卫 - 开发环境优化版本
 router.beforeEach(async (to, from, next) => {
-  // 开始性能监控
-  const timerId = `guard-${Date.now()}`
-  performanceMonitor.startTimer(timerId)
-
   try {
     // 设置页面标题
     if (to.meta?.title) {
       document.title = `${to.meta.title} - 招商线索流通平台`
     }
+
+    // 检查是否启用开发环境简化模式
+    const isDevSimplified = devEnvConfig.dev.simplifiedGuards
+    
+    if (isDevSimplified) {
+      // 开发环境简化模式：跳过复杂的认证和权限检查
+      console.log('🚀 开发环境简化模式：跳过复杂验证')
+      
+      // 只对需要认证的页面进行基本检查
+      if (guardUtils.requiresAuthentication(to.meta?.requiresAuth)) {
+        const { isLoggedIn } = useAuth()
+        
+        if (!isLoggedIn.value) {
+          // 简单检查本地存储是否有token
+          const token = localStorage.getItem('lead_exchange_access_token')
+          if (!token) {
+            console.warn('🚫 开发模式：未找到token，重定向到登录页')
+            next({ path: '/auth/login', query: { redirect: to.fullPath } })
+            return
+          }
+        }
+      }
+      
+      // 处理已登录用户访问认证页面
+      if (to.name === 'Login' || to.name === 'Register') {
+        const token = localStorage.getItem('lead_exchange_access_token')
+        if (token) {
+          console.info('✅ 开发模式：用户已登录，重定向到首页')
+          next({ path: '/home' })
+          return
+        }
+      }
+      
+      console.log('✅ 开发模式：路由访问验证通过:', to.fullPath)
+      next()
+      return
+    }
+
+    // 生产环境完整验证逻辑
+    const timerId = `guard-${Date.now()}`
+    performanceMonitor.startTimer(timerId)
 
     // 获取认证实例
     const { checkAuthStatus, checkRoutePermission, currentUser } = useAuth()
@@ -160,13 +204,10 @@ router.beforeEach(async (to, from, next) => {
       if (!guardConfig.enableAuth) {
         console.warn('⚠️ 认证检查已禁用，跳过认证验证')
       } else {
-        // 使用安全的认证状态检查，包含token有效性验证
         const isAuthenticated = await checkAuthStatus()
-
         if (!isAuthenticated) {
           const error = '用户未认证或token无效'
           console.warn('🚫', error)
-          
           const redirectInfo = errorHandler.handleAuthError(error, to.fullPath)
           next(redirectInfo)
           return
@@ -182,7 +223,6 @@ router.beforeEach(async (to, from, next) => {
       if (!hasRolePermission) {
         const error = `用户缺少必要角色: ${requiredRoles.join(', ')}`
         console.warn('🚫', error)
-        
         const redirectInfo = errorHandler.handlePermissionError(error, to.fullPath, userId)
         next(redirectInfo)
         return
@@ -197,7 +237,6 @@ router.beforeEach(async (to, from, next) => {
       if (!hasPermission) {
         const error = `用户缺少必要权限: ${requiredPermissions.join(', ')}`
         console.warn('🚫', error)
-        
         const redirectInfo = errorHandler.handlePermissionError(error, to.fullPath, userId)
         next(redirectInfo)
         return
@@ -222,23 +261,19 @@ router.beforeEach(async (to, from, next) => {
     console.log('✅ 路由访问验证通过:', to.fullPath)
     next()
     
+    // 结束性能监控
+    performanceMonitor.endTimer(timerId, to.fullPath)
+    
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     console.error('💥 路由守卫执行异常:', errorMessage)
     
     // 发生异常时的降级处理
     if (guardUtils.requiresAuthentication(to.meta?.requiresAuth)) {
-      // 需要认证的页面发生异常，重定向到登录页
-      const redirectInfo = errorHandler.handleSystemError(errorMessage, to.fullPath)
-      next(redirectInfo)
+      next({ path: '/auth/login', query: { redirect: to.fullPath, error: 'system_error' } })
     } else {
-      // 不需要认证的页面，允许访问但记录错误
-      guardUtils.logAccessError(to.fullPath, errorMessage)
       next()
     }
-  } finally {
-    // 结束性能监控
-    performanceMonitor.endTimer(timerId, to.fullPath)
   }
 })
 
